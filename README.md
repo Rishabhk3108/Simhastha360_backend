@@ -20,6 +20,14 @@ On first startup, an admin account is bootstrapped from `ADMIN_BOOTSTRAP_PHONE` 
 
 API docs: http://127.0.0.1:8000/docs
 
+## Deploying (e.g. Vercel)
+Serverless platforms give the function a read-only filesystem (aside from `/tmp`), so the local SQLite file won't work in production — use a hosted Postgres instead:
+
+1. Create a free Postgres instance (e.g. [Neon](https://neon.tech) or [Supabase](https://supabase.com)).
+2. Set `DATABASE_URL` in your platform's env vars to that instance's connection string, e.g. `postgresql://user:password@host/dbname?sslmode=require`. `psycopg2-binary` is already in `requirements.txt` to support this.
+3. Set `SECRET_KEY` to a real random value (`python -c "import secrets; print(secrets.token_hex(32))"`) and `ADMIN_BOOTSTRAP_PASSWORD` to something other than the default — the bootstrap admin is created fresh on first startup against whatever `DATABASE_URL` points to.
+4. Leave any env var you don't want to override **unset** in the dashboard rather than present-but-blank — `Settings` tolerates blank values by falling back to defaults, but an unset var is clearer.
+
 ## Domain map (routers ↔ spec sections)
 | Router | Spec section |
 |---|---|
