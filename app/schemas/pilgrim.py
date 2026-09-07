@@ -41,3 +41,9 @@ class PilgrimRegistrationOut(BaseModel):
     name: str
     registered_via: str
     created_at: datetime
+
+
+class PilgrimSummary(BaseModel):
+    pilgrim_id: int
+    name: str
+    registered_via: str
