@@ -6,8 +6,11 @@ from app.models.incident import SOSAlert, LostPersonReport
 from app.models.task import Task
 from app.models.family import FamilyGroup, FamilyMember, FamilyShareLink
 from app.models.health_card import HealthCard
+from app.models.pilgrim import Guardian, Pilgrim
 
 __all__ = [
+    "Guardian",
+    "Pilgrim",
     "User",
     "VolunteerProfile",
     "Facility",
