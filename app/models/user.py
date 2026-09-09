@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -41,12 +41,31 @@ class VolunteerProfile(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
     age: Mapped[int] = mapped_column(Integer, nullable=True)
+    gender: Mapped[str] = mapped_column(String(20), nullable=True)
+    email: Mapped[str] = mapped_column(String(120), nullable=True)
     city_state: Mapped[str] = mapped_column(String(120), nullable=True)
+    permanent_address: Mapped[str] = mapped_column(String(255), nullable=True)
+    emergency_contact_name: Mapped[str] = mapped_column(String(120), nullable=True)
+    emergency_contact_phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    id_proof_type: Mapped[str] = mapped_column(String(30), nullable=True)
+    id_number: Mapped[str] = mapped_column(String(60), nullable=True)
+    id_proof_front_doc_id: Mapped[str] = mapped_column(ForeignKey("uploaded_documents.id"), nullable=True)
+    id_proof_back_doc_id: Mapped[str] = mapped_column(ForeignKey("uploaded_documents.id"), nullable=True)
+    photo_doc_id: Mapped[str] = mapped_column(ForeignKey("uploaded_documents.id"), nullable=True)
     skills: Mapped[str] = mapped_column(String(255), default="")  # comma-separated
-    availability_dates: Mapped[str] = mapped_column(String(255), default="")
+    languages: Mapped[str] = mapped_column(String(255), default="")  # comma-separated
+    availability_slots: Mapped[list] = mapped_column(JSON, default=list)  # [{date, start_time, end_time}]
+    prior_experience: Mapped[str] = mapped_column(Text, nullable=True)
+    tshirt_size: Mapped[str] = mapped_column(String(10), nullable=True)
+    organization_affiliation: Mapped[str] = mapped_column(String(120), nullable=True)
+    medical_conditions: Mapped[str] = mapped_column(Text, nullable=True)
+    no_criminal_record: Mapped[bool] = mapped_column(Boolean, default=False)
+    code_of_conduct_accepted: Mapped[bool] = mapped_column(Boolean, default=False)
+    media_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     preferred_zone_id: Mapped[int] = mapped_column(ForeignKey("zones.id"), nullable=True)
     id_proof_url: Mapped[str] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default=STATUS_PENDING)
+    review_note: Mapped[str] = mapped_column(Text, nullable=True)
     on_duty: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 

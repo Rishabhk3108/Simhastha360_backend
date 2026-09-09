@@ -20,6 +20,7 @@ from app.routers import (
     pilgrims,
     reports,
     tasks,
+    uploads,
     volunteers,
     zones,
 )
@@ -62,6 +63,7 @@ app.include_router(auth.router)
 app.include_router(facilities.router)
 app.include_router(zones.router)
 app.include_router(parking.router)
+app.include_router(uploads.router)
 app.include_router(reports.router)
 app.include_router(incidents.router)
 app.include_router(volunteers.router)

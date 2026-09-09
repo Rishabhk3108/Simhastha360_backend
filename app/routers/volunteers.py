@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, hash_password, require_roles
+from app.core.security import hash_password, require_roles
 from app.models.user import (
     ROLE_ADMIN,
     ROLE_VOLUNTEER,
@@ -28,8 +28,30 @@ def _to_out(profile: VolunteerProfile) -> VolunteerOut:
         user_id=profile.user_id,
         name=profile.user.name,
         phone=profile.user.phone,
+        age=profile.age,
+        gender=profile.gender,
+        email=profile.email,
+        city_state=profile.city_state,
+        permanent_address=profile.permanent_address,
+        emergency_contact_name=profile.emergency_contact_name,
+        emergency_contact_phone=profile.emergency_contact_phone,
+        id_proof_type=profile.id_proof_type,
+        id_number=profile.id_number,
+        id_proof_front_doc_id=profile.id_proof_front_doc_id,
+        id_proof_back_doc_id=profile.id_proof_back_doc_id,
+        photo_doc_id=profile.photo_doc_id,
         skills=profile.skills,
+        languages=profile.languages,
+        availability_slots=profile.availability_slots or [],
+        prior_experience=profile.prior_experience,
+        tshirt_size=profile.tshirt_size,
+        organization_affiliation=profile.organization_affiliation,
+        medical_conditions=profile.medical_conditions,
+        no_criminal_record=profile.no_criminal_record,
+        code_of_conduct_accepted=profile.code_of_conduct_accepted,
+        media_consent=profile.media_consent,
         status=profile.status,
+        review_note=profile.review_note,
         on_duty=profile.on_duty,
         preferred_zone_id=profile.preferred_zone_id,
         created_at=profile.created_at,
@@ -54,11 +76,28 @@ def apply(payload: VolunteerApply, db: Session = Depends(get_db)):
     profile = VolunteerProfile(
         user_id=user.id,
         age=payload.age,
+        gender=payload.gender,
+        email=payload.email,
         city_state=payload.city_state,
+        permanent_address=payload.permanent_address,
+        emergency_contact_name=payload.emergency_contact_name,
+        emergency_contact_phone=payload.emergency_contact_phone,
+        id_proof_type=payload.id_proof_type,
+        id_number=payload.id_number,
+        id_proof_front_doc_id=payload.id_proof_front_doc_id,
+        id_proof_back_doc_id=payload.id_proof_back_doc_id,
+        photo_doc_id=payload.photo_doc_id,
         skills=",".join(payload.skills),
-        availability_dates=payload.availability_dates or "",
+        languages=",".join(payload.languages),
+        availability_slots=[slot.model_dump() for slot in payload.availability_slots],
+        prior_experience=payload.prior_experience,
+        tshirt_size=payload.tshirt_size,
+        organization_affiliation=payload.organization_affiliation,
+        medical_conditions=payload.medical_conditions,
+        no_criminal_record=payload.no_criminal_record,
+        code_of_conduct_accepted=payload.code_of_conduct_accepted,
+        media_consent=payload.media_consent,
         preferred_zone_id=payload.preferred_zone_id,
-        id_proof_url=payload.id_proof_url,
         status=STATUS_PENDING,
     )
     db.add(profile)
@@ -123,10 +162,12 @@ def review_volunteer(
 
     if payload.action == "approve":
         profile.status = STATUS_APPROVED
+        profile.review_note = payload.note
     elif payload.action == "reject":
         profile.status = STATUS_REJECTED
+        profile.review_note = payload.note
     elif payload.action == "request_info":
-        pass  # status stays pending; note is surfaced to the volunteer out-of-band (notification)
+        profile.review_note = payload.note  # status stays pending; surfaced to the volunteer at login
     else:
         raise HTTPException(status_code=400, detail="Unknown action")
 
