@@ -46,7 +46,8 @@ class VolunteerReviewAction(BaseModel):
 
 
 class VolunteerAvailabilityUpdate(BaseModel):
-    on_duty: bool
+    on_duty: bool | None = None
+    accepts_emergencies: bool | None = None
 
 
 class VolunteerOut(BaseModel):
@@ -80,6 +81,7 @@ class VolunteerOut(BaseModel):
     review_note: str | None
     rating: float | None
     on_duty: bool
+    accepts_emergencies: bool
     preferred_zone_id: int | None
     current_lat: float | None
     current_lng: float | None

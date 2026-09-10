@@ -60,6 +60,7 @@ def _to_out(profile: VolunteerProfile) -> VolunteerOut:
         review_note=profile.review_note,
         rating=profile.rating,
         on_duty=profile.on_duty,
+        accepts_emergencies=profile.accepts_emergencies,
         preferred_zone_id=profile.preferred_zone_id,
         current_lat=profile.user.current_lat,
         current_lng=profile.user.current_lng,
@@ -131,7 +132,10 @@ def update_my_availability(
     profile = db.query(VolunteerProfile).filter(VolunteerProfile.user_id == user.id).first()
     if profile.status != STATUS_APPROVED:
         raise HTTPException(status_code=403, detail="Not yet approved")
-    profile.on_duty = payload.on_duty
+    if payload.on_duty is not None:
+        profile.on_duty = payload.on_duty
+    if payload.accepts_emergencies is not None:
+        profile.accepts_emergencies = payload.accepts_emergencies
     db.commit()
     db.refresh(profile)
     return _to_out(profile)

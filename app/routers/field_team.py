@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import hash_password, require_roles
-from app.models.user import ROLE_ADMIN, ROLE_FIELD_TEAM, ROLE_VOLUNTEER, User
+from app.models.user import ROLE_ADMIN, ROLE_FIELD_TEAM, ROLE_VOLUNTEER, ROLE_VOLUNTEER_MANAGER, User
 
 router = APIRouter(prefix="/field-team", tags=["field-team"])
 
@@ -59,7 +59,7 @@ def create_field_team_member(
 @router.get("", response_model=list[FieldTeamOut])
 def list_field_team(
     db: Session = Depends(get_db),
-    admin: User = Depends(require_roles(ROLE_ADMIN)),
+    manager: User = Depends(require_roles(ROLE_ADMIN, ROLE_VOLUNTEER_MANAGER)),
 ):
     return db.query(User).filter(User.role == ROLE_FIELD_TEAM).all()
 

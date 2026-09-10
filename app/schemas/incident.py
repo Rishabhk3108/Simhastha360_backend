@@ -16,10 +16,27 @@ class SOSOut(BaseModel):
     lng: float
     status: str
     assigned_responder_id: int | None
+    assigned_at: datetime | None
+    acknowledged_at: datetime | None
+    escalated: bool
     created_at: datetime
+    resolved_at: datetime | None
 
     class Config:
         from_attributes = True
+
+
+class SOSReassign(BaseModel):
+    responder_id: int
+
+
+class SOSStatusOut(BaseModel):
+    id: int
+    status: str
+    responder_name: str | None
+    distance_km: float | None
+    duration_min: float | None
+    created_at: datetime
 
 
 class LostPersonCreate(BaseModel):
