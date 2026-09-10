@@ -6,6 +6,7 @@ from app.core.security import hash_password, require_roles
 from app.models.user import (
     ROLE_ADMIN,
     ROLE_VOLUNTEER,
+    ROLE_VOLUNTEER_MANAGER,
     STATUS_APPROVED,
     STATUS_PENDING,
     STATUS_REJECTED,
@@ -20,6 +21,11 @@ from app.schemas.volunteer import (
 )
 
 router = APIRouter(prefix="/volunteers", tags=["volunteers"])
+
+# Day-to-day volunteer approval/oversight belongs to the police/municipal
+# volunteer managers; the main admin role is kept as an override rather than
+# cut out of the loop entirely.
+MANAGES_VOLUNTEERS = (ROLE_ADMIN, ROLE_VOLUNTEER_MANAGER)
 
 
 def _to_out(profile: VolunteerProfile) -> VolunteerOut:
@@ -52,8 +58,12 @@ def _to_out(profile: VolunteerProfile) -> VolunteerOut:
         media_consent=profile.media_consent,
         status=profile.status,
         review_note=profile.review_note,
+        rating=profile.rating,
         on_duty=profile.on_duty,
         preferred_zone_id=profile.preferred_zone_id,
+        current_lat=profile.user.current_lat,
+        current_lng=profile.user.current_lng,
+        location_updated_at=profile.user.location_updated_at,
         created_at=profile.created_at,
     )
 
@@ -134,7 +144,7 @@ def list_volunteers(
     zone_id: int | None = None,
     on_duty: bool | None = None,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_roles(ROLE_ADMIN)),
+    manager: User = Depends(require_roles(*MANAGES_VOLUNTEERS)),
 ):
     query = db.query(VolunteerProfile)
     if status:
@@ -154,7 +164,7 @@ def review_volunteer(
     profile_id: int,
     payload: VolunteerReviewAction,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_roles(ROLE_ADMIN)),
+    manager: User = Depends(require_roles(*MANAGES_VOLUNTEERS)),
 ):
     profile = db.query(VolunteerProfile).filter(VolunteerProfile.id == profile_id).first()
     if not profile:
@@ -163,6 +173,8 @@ def review_volunteer(
     if payload.action == "approve":
         profile.status = STATUS_APPROVED
         profile.review_note = payload.note
+        if payload.rating is not None:
+            profile.rating = payload.rating
     elif payload.action == "reject":
         profile.status = STATUS_REJECTED
         profile.review_note = payload.note

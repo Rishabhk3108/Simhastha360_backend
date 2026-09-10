@@ -5,10 +5,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-# roles: admin, field_team, volunteer
+# roles: admin, field_team, volunteer, volunteer_manager
 ROLE_ADMIN = "admin"
 ROLE_FIELD_TEAM = "field_team"
 ROLE_VOLUNTEER = "volunteer"
+ROLE_VOLUNTEER_MANAGER = "volunteer_manager"
 
 # volunteer application status
 STATUS_PENDING = "pending"
@@ -28,6 +29,7 @@ class User(Base):
     current_lat: Mapped[float] = mapped_column(nullable=True)
     current_lng: Mapped[float] = mapped_column(nullable=True)
     location_updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    expo_push_token: Mapped[str] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     volunteer_profile: Mapped["VolunteerProfile"] = relationship(
@@ -66,6 +68,7 @@ class VolunteerProfile(Base):
     id_proof_url: Mapped[str] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default=STATUS_PENDING)
     review_note: Mapped[str] = mapped_column(Text, nullable=True)
+    rating: Mapped[float] = mapped_column(nullable=True)
     on_duty: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 

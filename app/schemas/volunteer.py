@@ -42,6 +42,7 @@ class VolunteerApply(BaseModel):
 class VolunteerReviewAction(BaseModel):
     action: str  # approve | reject | request_info
     note: str | None = None
+    rating: float | None = None  # settable on approve - the only rating source for now
 
 
 class VolunteerAvailabilityUpdate(BaseModel):
@@ -77,8 +78,12 @@ class VolunteerOut(BaseModel):
     media_consent: bool
     status: str
     review_note: str | None
+    rating: float | None
     on_duty: bool
     preferred_zone_id: int | None
+    current_lat: float | None
+    current_lng: float | None
+    location_updated_at: datetime | None
     created_at: datetime
 
     class Config:

@@ -16,11 +16,13 @@ from app.routers import (
     health_card,
     incidents,
     ivr,
+    notifications,
     parking,
     pilgrims,
     reports,
     tasks,
     uploads,
+    volunteer_managers,
     volunteers,
     zones,
 )
@@ -67,7 +69,9 @@ app.include_router(uploads.router)
 app.include_router(reports.router)
 app.include_router(incidents.router)
 app.include_router(volunteers.router)
+app.include_router(volunteer_managers.router)
 app.include_router(tasks.router)
+app.include_router(notifications.router)
 app.include_router(field_team.router)
 app.include_router(family.router)
 app.include_router(pilgrims.router)
