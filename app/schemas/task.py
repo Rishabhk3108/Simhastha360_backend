@@ -25,6 +25,7 @@ class TaskPhotosSubmit(BaseModel):
 class TaskReviewAction(BaseModel):
     action: str  # approve | reject
     note: str | None = None
+    rating: float | None = None  # optional volunteer rating, settable on approve
 
 
 class TaskOut(BaseModel):

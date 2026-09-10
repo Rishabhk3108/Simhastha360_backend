@@ -94,6 +94,18 @@ def my_points(
     return PointsSummary(today=today_total, total=total)
 
 
+@router.get("/{task_id}", response_model=TaskOut)
+def get_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    manager: User = Depends(require_roles(*MANAGES_TASKS)),
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
 @router.get("/{task_id}/suggestions", response_model=list[TaskSuggestion])
 def suggest_assignees(
     task_id: int,
@@ -224,6 +236,10 @@ def review_task(
         task.status = TASK_COMPLETE
         task.completed_at = datetime.now(timezone.utc)
         task.review_note = payload.note
+        if payload.rating is not None:
+            profile = db.query(VolunteerProfile).filter(VolunteerProfile.user_id == assignee.id).first()
+            if profile:
+                profile.rating = payload.rating
         db.commit()
         db.refresh(task)
         notify(
