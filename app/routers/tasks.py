@@ -34,6 +34,7 @@ from app.schemas.task import (
     TaskSuggestion,
 )
 from app.services.geo import haversine_km
+from app.services.mappls import RouteUnavailable, get_driving_route
 from app.services.notifications import notify
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -106,6 +107,29 @@ def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+@router.get("/{task_id}/route")
+async def get_task_route(
+    task_id: int,
+    db: Session = Depends(get_db),
+    manager: User = Depends(require_roles(*MANAGES_TASKS)),
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.lat is None or task.lng is None:
+        raise HTTPException(status_code=400, detail="Task has no location")
+    if not task.assignee_id:
+        raise HTTPException(status_code=400, detail="Task has no assignee")
+    assignee = db.query(User).filter(User.id == task.assignee_id).first()
+    if not assignee or assignee.current_lat is None or assignee.current_lng is None:
+        raise HTTPException(status_code=400, detail="Volunteer's live location isn't available yet")
+
+    try:
+        return await get_driving_route(assignee.current_lat, assignee.current_lng, task.lat, task.lng)
+    except RouteUnavailable as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @router.get("/{task_id}/suggestions", response_model=list[TaskSuggestion])
