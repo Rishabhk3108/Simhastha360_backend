@@ -15,6 +15,7 @@ from app.models.incident import (
     LostPersonReport,
     SOSAlert,
 )
+from app.models.pilgrim import GuardianLink, Pilgrim
 from app.models.user import ROLE_ADMIN, ROLE_FIELD_TEAM, ROLE_VOLUNTEER, ROLE_VOLUNTEER_MANAGER, User
 from app.models.user import VolunteerProfile
 from app.schemas.incident import LostPersonCreate, LostPersonOut, SOSCreate, SOSOut, SOSReassign, SOSStatusOut
@@ -100,6 +101,26 @@ def _maybe_escalate(db: Session, sos: SOSAlert) -> None:
         db.commit()
 
 
+def _notify_guardians(db: Session, device_id: str) -> None:
+    """A guardian watching over this pilgrim (linked via QR code) should
+    never find out about an SOS late - notify every linked guardian
+    immediately, independent of responder assignment."""
+    pilgrim = db.query(Pilgrim).filter(Pilgrim.device_id == device_id).first()
+    if not pilgrim:
+        return
+    links = db.query(GuardianLink).filter(GuardianLink.pilgrim_id == pilgrim.id).all()
+    for link in links:
+        guardian = db.query(User).filter(User.id == link.guardian_user_id).first()
+        if guardian:
+            notify(
+                db,
+                guardian,
+                "Emergency alert",
+                f"{pilgrim.name} has sent an SOS. Open the app for the latest status.",
+                {"type": "sos_guardian_alert", "pilgrim_id": pilgrim.id},
+            )
+
+
 @router.post("/sos", response_model=SOSOut)
 def create_sos(payload: SOSCreate, db: Session = Depends(get_db)):
     responder = _find_nearest_responder(db, payload.lat, payload.lng, exclude_ids=set())
@@ -110,6 +131,7 @@ def create_sos(payload: SOSCreate, db: Session = Depends(get_db)):
     if responder:
         _assign(db, sos, responder)
         db.refresh(sos)
+    _notify_guardians(db, payload.device_id)
     return sos
 
 

@@ -1,15 +1,6 @@
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel
-
-
-class GuardianInfo(BaseModel):
-    name: str
-    phone: str
-    aadhar_number: str
-    email: str | None = None
-    relation_to_pilgrim: str
 
 
 class PilgrimInfo(BaseModel):
@@ -30,24 +21,19 @@ class PilgrimInfo(BaseModel):
 
 
 class PilgrimRegistration(BaseModel):
-    registered_via: Literal["self", "guardian"]
     device_id: str
     pilgrim: PilgrimInfo
-    guardian: GuardianInfo
 
 
 class PilgrimRegistrationOut(BaseModel):
     pilgrim_id: int
-    guardian_id: int
     name: str
-    registered_via: str
     created_at: datetime
 
 
 class PilgrimSummary(BaseModel):
     pilgrim_id: int
     name: str
-    registered_via: str
 
 
 class PilgrimLogin(BaseModel):
@@ -81,6 +67,16 @@ class GuardianOut(BaseModel):
 
 class PilgrimLoginOut(BaseModel):
     pilgrim_id: int
-    registered_via: str
     pilgrim: PilgrimDetailOut
-    guardian: GuardianOut
+    guardian: GuardianOut | None
+
+
+class PilgrimLinkTokenOut(BaseModel):
+    token: str
+    expires_at: datetime
+
+
+class PilgrimLocationUpdate(BaseModel):
+    device_id: str
+    lat: float
+    lng: float

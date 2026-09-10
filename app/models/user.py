@@ -5,11 +5,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-# roles: admin, field_team, volunteer, volunteer_manager
+# roles: admin, field_team, volunteer, volunteer_manager, guardian
 ROLE_ADMIN = "admin"
 ROLE_FIELD_TEAM = "field_team"
 ROLE_VOLUNTEER = "volunteer"
 ROLE_VOLUNTEER_MANAGER = "volunteer_manager"
+ROLE_GUARDIAN = "guardian"
 
 # volunteer application status
 STATUS_PENDING = "pending"

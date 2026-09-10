@@ -1,13 +1,18 @@
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password
-from app.models.pilgrim import Guardian, Pilgrim
+from app.models.pilgrim import Pilgrim
 from app.schemas.pilgrim import (
     GuardianOut,
     PilgrimDetailOut,
+    PilgrimLinkTokenOut,
+    PilgrimLocationUpdate,
     PilgrimLogin,
     PilgrimLoginOut,
     PilgrimRegistration,
@@ -17,24 +22,16 @@ from app.schemas.pilgrim import (
 
 router = APIRouter(prefix="/pilgrims", tags=["pilgrims"])
 
+LINK_TOKEN_TTL_MINUTES = 15
+
 
 @router.post("/register", response_model=PilgrimRegistrationOut)
 def register(payload: PilgrimRegistration, db: Session = Depends(get_db)):
-    """Single endpoint for both entry points (spec: a pilgrim registering
-    themselves and naming a guardian, or a guardian registering on behalf of
-    a pilgrim) - the resulting record shape is identical either way, only
-    `registered_via` tracks which flow was used."""
-    guardian = Guardian(**payload.guardian.model_dump())
-    db.add(guardian)
-    db.flush()
-
     pilgrim_fields = payload.pilgrim.model_dump(exclude={"password"})
     pilgrim = Pilgrim(
         **pilgrim_fields,
         password_hash=hash_password(payload.pilgrim.password),
         device_id=payload.device_id,
-        guardian_id=guardian.id,
-        registered_via=payload.registered_via,
     )
     db.add(pilgrim)
     try:
@@ -47,13 +44,7 @@ def register(payload: PilgrimRegistration, db: Session = Depends(get_db)):
         )
     db.refresh(pilgrim)
 
-    return PilgrimRegistrationOut(
-        pilgrim_id=pilgrim.id,
-        guardian_id=guardian.id,
-        name=pilgrim.name,
-        registered_via=pilgrim.registered_via,
-        created_at=pilgrim.created_at,
-    )
+    return PilgrimRegistrationOut(pilgrim_id=pilgrim.id, name=pilgrim.name, created_at=pilgrim.created_at)
 
 
 @router.post("/login", response_model=PilgrimLoginOut)
@@ -62,10 +53,11 @@ def login(payload: PilgrimLogin, db: Session = Depends(get_db)):
     if not pilgrim or not verify_password(payload.password, pilgrim.password_hash):
         raise HTTPException(status_code=401, detail="Invalid Aadhar number or password")
 
+    # Old registration flow only - a pilgrim registered under the current
+    # flow simply has no guardian row (guardian_id is None).
     guardian = pilgrim.guardian
     return PilgrimLoginOut(
         pilgrim_id=pilgrim.id,
-        registered_via=pilgrim.registered_via,
         pilgrim=PilgrimDetailOut(
             name=pilgrim.name,
             phone=pilgrim.phone,
@@ -87,7 +79,9 @@ def login(payload: PilgrimLogin, db: Session = Depends(get_db)):
             aadhar_number=guardian.aadhar_number,
             email=guardian.email,
             relation_to_pilgrim=guardian.relation_to_pilgrim,
-        ),
+        )
+        if guardian
+        else None,
     )
 
 
@@ -99,4 +93,34 @@ def get_summary(pilgrim_id: int, db: Session = Depends(get_db)):
     pilgrim = db.query(Pilgrim).filter(Pilgrim.id == pilgrim_id).first()
     if not pilgrim:
         raise HTTPException(status_code=404, detail="Pilgrim not found")
-    return PilgrimSummary(pilgrim_id=pilgrim.id, name=pilgrim.name, registered_via=pilgrim.registered_via)
+    return PilgrimSummary(pilgrim_id=pilgrim.id, name=pilgrim.name)
+
+
+@router.post("/{pilgrim_id}/link-token", response_model=PilgrimLinkTokenOut)
+def create_link_token(pilgrim_id: int, db: Session = Depends(get_db)):
+    """Generates a short-lived, single-use code the pilgrim shows as a QR -
+    a guardian scanning it (see /guardians/me/link) is how the two get
+    linked. Short and uppercase so it also works as a manually-typed
+    fallback, not just a scanned code."""
+    pilgrim = db.query(Pilgrim).filter(Pilgrim.id == pilgrim_id).first()
+    if not pilgrim:
+        raise HTTPException(status_code=404, detail="Pilgrim not found")
+    token = secrets.token_hex(4).upper()
+    pilgrim.link_token = token
+    pilgrim.link_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=LINK_TOKEN_TTL_MINUTES)
+    db.commit()
+    return PilgrimLinkTokenOut(token=token, expires_at=pilgrim.link_token_expires_at)
+
+
+@router.patch("/{pilgrim_id}/location")
+def update_pilgrim_location(pilgrim_id: int, payload: PilgrimLocationUpdate, db: Session = Depends(get_db)):
+    pilgrim = (
+        db.query(Pilgrim).filter(Pilgrim.id == pilgrim_id, Pilgrim.device_id == payload.device_id).first()
+    )
+    if not pilgrim:
+        raise HTTPException(status_code=404, detail="Pilgrim not found")
+    pilgrim.last_lat = payload.lat
+    pilgrim.last_lng = payload.lng
+    pilgrim.location_updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"ok": True}

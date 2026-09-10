@@ -40,8 +40,32 @@ class Pilgrim(Base):
     pincode: Mapped[str] = mapped_column(String(12))
     country: Mapped[str] = mapped_column(String(80), default="India")
     medical_history: Mapped[str] = mapped_column(Text, nullable=True)
-    guardian_id: Mapped[int] = mapped_column(ForeignKey("guardians.id"))
+    # Nullable now: the old "guardian info collected at registration" flow is
+    # retired in favor of real guardian accounts linking to a pilgrim via a
+    # QR code (see GuardianLink) - kept nullable rather than dropped so any
+    # pilgrim rows created under the old flow keep their guardian record.
+    guardian_id: Mapped[int] = mapped_column(ForeignKey("guardians.id"), nullable=True)
     registered_via: Mapped[str] = mapped_column(String(10), default=REGISTERED_SELF)
+    last_lat: Mapped[float] = mapped_column(nullable=True)
+    last_lng: Mapped[float] = mapped_column(nullable=True)
+    location_updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    link_token: Mapped[str] = mapped_column(String(20), nullable=True, index=True)
+    link_token_expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     guardian: Mapped["Guardian"] = relationship()
+
+
+class GuardianLink(Base):
+    """Links a real guardian account (a User with role=guardian) to a
+    pilgrim, established by the guardian scanning a QR code the pilgrim
+    generates from their own app. Many-to-many: one guardian can watch over
+    several pilgrims, and (in principle) a pilgrim could be linked to more
+    than one guardian."""
+
+    __tablename__ = "guardian_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    guardian_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    pilgrim_id: Mapped[int] = mapped_column(ForeignKey("pilgrims.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

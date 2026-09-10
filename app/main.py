@@ -13,6 +13,7 @@ from app.routers import (
     facilities,
     family,
     field_team,
+    guardians,
     health_card,
     incidents,
     ivr,
@@ -75,6 +76,7 @@ app.include_router(notifications.router)
 app.include_router(field_team.router)
 app.include_router(family.router)
 app.include_router(pilgrims.router)
+app.include_router(guardians.router)
 app.include_router(health_card.router)
 app.include_router(ai.router)
 app.include_router(ivr.router)
