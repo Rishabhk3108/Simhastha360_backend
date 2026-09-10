@@ -25,6 +25,24 @@ class PilgrimRegistration(BaseModel):
     pilgrim: PilgrimInfo
 
 
+class ForeignerInfo(BaseModel):
+    name: str
+    phone: str
+    country: str
+    password: str
+    photo_base64: str | None = None
+
+
+class ForeignerRegistration(BaseModel):
+    device_id: str
+    foreigner: ForeignerInfo
+
+
+class ForeignerLogin(BaseModel):
+    phone: str
+    password: str
+
+
 class PilgrimRegistrationOut(BaseModel):
     pilgrim_id: int
     name: str
@@ -44,17 +62,18 @@ class PilgrimLogin(BaseModel):
 class PilgrimDetailOut(BaseModel):
     name: str
     phone: str
-    aadhar_number: str
-    age: int
+    aadhar_number: str | None
+    age: int | None
     photo_base64: str | None
     samagra_id: str | None
-    address_line1: str
+    address_line1: str | None
     address_line2: str | None
-    city: str
-    state: str
-    pincode: str
+    city: str | None
+    state: str | None
+    pincode: str | None
     country: str
     medical_history: str | None
+    is_foreigner: bool
 
 
 class GuardianOut(BaseModel):

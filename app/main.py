@@ -20,6 +20,7 @@ from app.routers import (
     notifications,
     parking,
     pilgrims,
+    points_of_interest,
     reports,
     tasks,
     uploads,
@@ -80,6 +81,7 @@ app.include_router(guardians.router)
 app.include_router(health_card.router)
 app.include_router(ai.router)
 app.include_router(ivr.router)
+app.include_router(points_of_interest.router)
 
 
 @app.get("/health")

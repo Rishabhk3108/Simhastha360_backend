@@ -9,6 +9,8 @@ from app.core.database import get_db
 from app.core.security import hash_password, verify_password
 from app.models.pilgrim import Pilgrim
 from app.schemas.pilgrim import (
+    ForeignerLogin,
+    ForeignerRegistration,
     GuardianOut,
     PilgrimDetailOut,
     PilgrimLinkTokenOut,
@@ -23,6 +25,25 @@ from app.schemas.pilgrim import (
 router = APIRouter(prefix="/pilgrims", tags=["pilgrims"])
 
 LINK_TOKEN_TTL_MINUTES = 15
+
+
+def _detail_out(pilgrim: Pilgrim) -> PilgrimDetailOut:
+    return PilgrimDetailOut(
+        name=pilgrim.name,
+        phone=pilgrim.phone,
+        aadhar_number=pilgrim.aadhar_number,
+        age=pilgrim.age,
+        photo_base64=pilgrim.photo_base64,
+        samagra_id=pilgrim.samagra_id,
+        address_line1=pilgrim.address_line1,
+        address_line2=pilgrim.address_line2,
+        city=pilgrim.city,
+        state=pilgrim.state,
+        pincode=pilgrim.pincode,
+        country=pilgrim.country,
+        medical_history=pilgrim.medical_history,
+        is_foreigner=pilgrim.is_foreigner,
+    )
 
 
 @router.post("/register", response_model=PilgrimRegistrationOut)
@@ -47,6 +68,41 @@ def register(payload: PilgrimRegistration, db: Session = Depends(get_db)):
     return PilgrimRegistrationOut(pilgrim_id=pilgrim.id, name=pilgrim.name, created_at=pilgrim.created_at)
 
 
+@router.post("/register-foreign", response_model=PilgrimRegistrationOut)
+def register_foreign(payload: ForeignerRegistration, db: Session = Depends(get_db)):
+    existing = db.query(Pilgrim).filter(Pilgrim.phone == payload.foreigner.phone, Pilgrim.is_foreigner.is_(True)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this phone number already exists. Please sign in instead.")
+
+    pilgrim = Pilgrim(
+        device_id=payload.device_id,
+        name=payload.foreigner.name,
+        phone=payload.foreigner.phone,
+        country=payload.foreigner.country,
+        photo_base64=payload.foreigner.photo_base64,
+        password_hash=hash_password(payload.foreigner.password),
+        is_foreigner=True,
+    )
+    db.add(pilgrim)
+    db.commit()
+    db.refresh(pilgrim)
+
+    return PilgrimRegistrationOut(pilgrim_id=pilgrim.id, name=pilgrim.name, created_at=pilgrim.created_at)
+
+
+@router.post("/login-foreign", response_model=PilgrimLoginOut)
+def login_foreign(payload: ForeignerLogin, db: Session = Depends(get_db)):
+    pilgrim = db.query(Pilgrim).filter(Pilgrim.phone == payload.phone, Pilgrim.is_foreigner.is_(True)).first()
+    if not pilgrim or not verify_password(payload.password, pilgrim.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid phone number or password")
+
+    return PilgrimLoginOut(
+        pilgrim_id=pilgrim.id,
+        pilgrim=_detail_out(pilgrim),
+        guardian=None,
+    )
+
+
 @router.post("/login", response_model=PilgrimLoginOut)
 def login(payload: PilgrimLogin, db: Session = Depends(get_db)):
     pilgrim = db.query(Pilgrim).filter(Pilgrim.aadhar_number == payload.aadhar_number).first()
@@ -58,21 +114,7 @@ def login(payload: PilgrimLogin, db: Session = Depends(get_db)):
     guardian = pilgrim.guardian
     return PilgrimLoginOut(
         pilgrim_id=pilgrim.id,
-        pilgrim=PilgrimDetailOut(
-            name=pilgrim.name,
-            phone=pilgrim.phone,
-            aadhar_number=pilgrim.aadhar_number,
-            age=pilgrim.age,
-            photo_base64=pilgrim.photo_base64,
-            samagra_id=pilgrim.samagra_id,
-            address_line1=pilgrim.address_line1,
-            address_line2=pilgrim.address_line2,
-            city=pilgrim.city,
-            state=pilgrim.state,
-            pincode=pilgrim.pincode,
-            country=pilgrim.country,
-            medical_history=pilgrim.medical_history,
-        ),
+        pilgrim=_detail_out(pilgrim),
         guardian=GuardianOut(
             name=guardian.name,
             phone=guardian.phone,

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -28,17 +28,21 @@ class Pilgrim(Base):
     device_id: Mapped[str] = mapped_column(String(120), index=True)
     name: Mapped[str] = mapped_column(String(120))
     phone: Mapped[str] = mapped_column(String(20), index=True)
-    aadhar_number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    # Nullable: foreign visitors (is_foreigner=True) register with just name,
+    # phone, country, password and a photo - they have no Aadhar number and
+    # no domestic address, so those fields simply stay empty for them.
+    aadhar_number: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    age: Mapped[int] = mapped_column(Integer)
+    age: Mapped[int] = mapped_column(Integer, nullable=True)
     photo_base64: Mapped[str] = mapped_column(Text, nullable=True)
     samagra_id: Mapped[str] = mapped_column(String(30), nullable=True)
-    address_line1: Mapped[str] = mapped_column(String(200))
+    address_line1: Mapped[str] = mapped_column(String(200), nullable=True)
     address_line2: Mapped[str] = mapped_column(String(200), nullable=True)
-    city: Mapped[str] = mapped_column(String(80))
-    state: Mapped[str] = mapped_column(String(80))
-    pincode: Mapped[str] = mapped_column(String(12))
+    city: Mapped[str] = mapped_column(String(80), nullable=True)
+    state: Mapped[str] = mapped_column(String(80), nullable=True)
+    pincode: Mapped[str] = mapped_column(String(12), nullable=True)
     country: Mapped[str] = mapped_column(String(80), default="India")
+    is_foreigner: Mapped[bool] = mapped_column(Boolean, default=False)
     medical_history: Mapped[str] = mapped_column(Text, nullable=True)
     # Nullable now: the old "guardian info collected at registration" flow is
     # retired in favor of real guardian accounts linking to a pilgrim via a
