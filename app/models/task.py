@@ -6,10 +6,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 TASK_UNASSIGNED = "unassigned"
+TASK_ASSIGNED = "assigned"
 TASK_ACKNOWLEDGED = "acknowledged"
-TASK_IN_PROGRESS = "in_progress"
 TASK_REVIEW = "review"
 TASK_COMPLETE = "complete"
+
+# Statuses that mean a volunteer is actively on the hook for a task - used to
+# keep them off the suggestion list for other tasks while any of these apply.
+ACTIVE_TASK_STATUSES = (TASK_ASSIGNED, TASK_ACKNOWLEDGED, TASK_REVIEW)
 
 PRIORITY_LOW = "low"
 PRIORITY_MEDIUM = "medium"

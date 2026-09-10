@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import require_roles
 from app.models.task import (
+    ACTIVE_TASK_STATUSES,
     MIN_COMPLETION_PHOTOS,
     TASK_ACKNOWLEDGED,
+    TASK_ASSIGNED,
     TASK_COMPLETE,
     TASK_REVIEW,
     TASK_UNASSIGNED,
@@ -124,8 +126,20 @@ def suggest_assignees(
         .all()
     )
 
+    # A volunteer already working another task shouldn't be piled on with a
+    # second one - exclude anyone with an active (non-complete) task other
+    # than this one.
+    busy_user_ids = {
+        row[0]
+        for row in db.query(Task.assignee_id)
+        .filter(Task.id != task_id, Task.assignee_id.isnot(None), Task.status.in_(ACTIVE_TASK_STATUSES))
+        .all()
+    }
+
     suggestions = []
     for profile in profiles:
+        if profile.user_id in busy_user_ids:
+            continue
         score = 0.0
         reasons = []
         if task.zone_id is not None and profile.preferred_zone_id == task.zone_id:
@@ -167,7 +181,16 @@ def assign_task(
     if not assignee:
         raise HTTPException(status_code=404, detail="Assignee not found")
 
+    already_busy = (
+        db.query(Task)
+        .filter(Task.id != task_id, Task.assignee_id == payload.assignee_id, Task.status.in_(ACTIVE_TASK_STATUSES))
+        .first()
+    )
+    if already_busy:
+        raise HTTPException(status_code=400, detail="This volunteer already has an active task")
+
     task.assignee_id = payload.assignee_id
+    task.status = TASK_ASSIGNED
     db.commit()
     db.refresh(task)
 
@@ -190,6 +213,8 @@ def acknowledge_task(
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or task.assignee_id != user.id:
         raise HTTPException(status_code=404, detail="Task not found")
+    if task.status != TASK_ASSIGNED:
+        raise HTTPException(status_code=400, detail="Task cannot be acknowledged in its current state")
     task.status = TASK_ACKNOWLEDGED
     task.acknowledged_at = datetime.now(timezone.utc)
     db.commit()
